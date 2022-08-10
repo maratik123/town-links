@@ -1,40 +1,13 @@
-use glium::{
-    backend::glutin::DisplayCreationError, glutin::error::ExternalError, SwapBuffersError,
-};
-use imgui_glium_renderer::RendererError;
+use winit::error::OsError;
 
 #[derive(Debug)]
 pub enum Error {
-    GliumDisplayCreationError(DisplayCreationError),
-    GliumRendererError(RendererError),
-    GliumExternalError(ExternalError),
-    GliumSwapBuffersError(SwapBuffersError),
+    WinitOsError(OsError),
 }
 
-impl From<DisplayCreationError> for Error {
+impl From<OsError> for Error {
     #[inline]
-    fn from(err: DisplayCreationError) -> Self {
-        Error::GliumDisplayCreationError(err)
-    }
-}
-
-impl From<RendererError> for Error {
-    #[inline]
-    fn from(err: RendererError) -> Self {
-        Error::GliumRendererError(err)
-    }
-}
-
-impl From<ExternalError> for Error {
-    #[inline]
-    fn from(err: ExternalError) -> Self {
-        Error::GliumExternalError(err)
-    }
-}
-
-impl From<SwapBuffersError> for Error {
-    #[inline]
-    fn from(err: SwapBuffersError) -> Self {
-        Error::GliumSwapBuffersError(err)
+    fn from(err: OsError) -> Self {
+        Error::WinitOsError(err)
     }
 }
