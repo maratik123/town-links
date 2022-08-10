@@ -1,5 +1,12 @@
 use crate::err::Error;
+use wgpu::{
+    Backends, Device, DeviceDescriptor, Features, Instance, Limits, PowerPreference, PresentMode,
+    Queue, RequestAdapterOptions, RequestAdapterOptionsBase, Surface, SurfaceConfiguration,
+    TextureUsages,
+};
+use winit::window::Window;
 use winit::{
+    dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
@@ -29,4 +36,72 @@ pub fn run() -> Result<(), Error> {
         },
         _ => {}
     });
+}
+
+struct State {
+    surface: Surface,
+    device: Device,
+    queue: Queue,
+    config: SurfaceConfiguration,
+    size: PhysicalSize<u32>,
+}
+
+impl State {
+    async fn new(window: &Window) -> Result<Self, Error> {
+        let size = window.inner_size();
+
+        let instance = Instance::new(Backends::all());
+        let surface = unsafe { instance.create_surface(window) };
+        let adapter = instance
+            .request_adapter(&RequestAdapterOptions {
+                power_preference: PowerPreference::default(),
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .ok_or_else(|| Error::CreateAdapter("Failed to create adapter".to_string()))?;
+
+        let (device, queue) = adapter
+            .request_device(
+                &DeviceDescriptor {
+                    features: Features::empty(),
+                    limits: Limits::default(),
+                    label: None,
+                },
+                None,
+            )
+            .await?;
+
+        let config = SurfaceConfiguration {
+            usage: TextureUsages::RENDER_ATTACHMENT,
+            format: surface.get_supported_formats(&adapter)[0],
+            width: size.width,
+            height: size.height,
+            present_mode: PresentMode::Fifo,
+        };
+        surface.configure(&device, &config);
+        Ok(Self {
+            surface,
+            device,
+            queue,
+            config,
+            size,
+        })
+    }
+
+    fn resize(&mut self, new_size: PhysicalSize<u32>) {
+        todo!()
+    }
+
+    fn input(&mut self, event: &WindowEvent) -> bool {
+        todo!()
+    }
+
+    fn update(&mut self) {
+        todo!()
+    }
+
+    fn render(&mut self) -> Result<(), Error> {
+        todo!()
+    }
 }
