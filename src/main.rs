@@ -1,6 +1,6 @@
 use town_links::{err::Error, gui};
 
 fn main() -> Result<(), Error> {
-    gui::run()?;
+    pollster::block_on(gui::run())?;
     Ok(())
 }

@@ -4,18 +4,19 @@ use wgpu::{
     Queue, RequestAdapterOptions, RequestAdapterOptionsBase, Surface, SurfaceConfiguration,
     TextureUsages,
 };
-use winit::window::Window;
 use winit::{
     dpi::PhysicalSize,
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
-    window::WindowBuilder,
+    window::{Window, WindowBuilder},
 };
 
-pub fn run() -> Result<(), Error> {
-    env_logger::init();
+pub async fn run() -> Result<(), Error> {
+    env_logger::try_init()?;
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop)?;
+
+    let mut state = State::new(&window).await?;
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -54,12 +55,12 @@ impl State {
         let surface = unsafe { instance.create_surface(window) };
         let adapter = instance
             .request_adapter(&RequestAdapterOptions {
-                power_preference: PowerPreference::default(),
+                power_preference: PowerPreference::HighPerformance,
                 compatible_surface: Some(&surface),
                 force_fallback_adapter: false,
             })
             .await
-            .ok_or_else(|| Error::CreateAdapter("Failed to create adapter".to_string()))?;
+            .ok_or(Error::RequestAdapterError)?;
 
         let (device, queue) = adapter
             .request_device(
@@ -75,9 +76,9 @@ impl State {
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(&adapter)[0],
-            width: size.width,
-            height: size.height,
-            present_mode: PresentMode::Fifo,
+            width: size.width.min(1),
+            height: size.height.min(1),
+            present_mode: PresentMode::AutoVsync,
         };
         surface.configure(&device, &config);
         Ok(Self {

@@ -9,5 +9,6 @@ env_logger = "0.9"
 #imgui-wgpu = "0.20"
 #imgui-winit-support = { version = "0.8", features = ["winit-26"], default-features = false }
 log = "0.4"
+pollster = "0.2"
 wgpu = "0.13"
 winit = "0.26"
