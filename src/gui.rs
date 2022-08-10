@@ -76,8 +76,8 @@ impl State {
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(&adapter)[0],
-            width: size.width.min(1),
-            height: size.height.min(1),
+            width: Self::valid_dim(size.width),
+            height: Self::valid_dim(size.height),
             present_mode: PresentMode::AutoVsync,
         };
         surface.configure(&device, &config);
@@ -91,7 +91,11 @@ impl State {
     }
 
     fn resize(&mut self, new_size: PhysicalSize<u32>) {
-        todo!()
+        if new_size.width > 0 && new_size.height > 0 {
+            self.size = new_size;
+            self.config.width = Self::valid_dim(new_size.width);
+            self.config.height = Self::valid_dim(new_size.height);
+        }
     }
 
     fn input(&mut self, event: &WindowEvent) -> bool {
@@ -104,5 +108,10 @@ impl State {
 
     fn render(&mut self) -> Result<(), Error> {
         todo!()
+    }
+
+    #[inline]
+    fn valid_dim(x: u32) -> u32 {
+        x.min(1)
     }
 }
