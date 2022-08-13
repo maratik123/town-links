@@ -1,10 +1,13 @@
 use crate::err::Error;
 use std::iter;
 use wgpu::{
-    Backends, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, Instance,
-    Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
-    TextureViewDescriptor,
+    include_wgsl, Backends, BlendState, Color, ColorTargetState, ColorWrites,
+    CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace,
+    Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode,
+    PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
+    RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor,
+    VertexState,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -19,6 +22,7 @@ pub struct State {
     config: SurfaceConfiguration,
     size: PhysicalSize<u32>,
     clear_color: Color,
+    render_pipeline: RenderPipeline,
 }
 
 impl State {
@@ -63,23 +67,60 @@ impl State {
             a: 1.0,
         };
 
-        let cursor_position = PhysicalPosition::<f64> {
-            x: f64::from(size.width) / 2.0,
-            y: f64::from(size.height) / 2.0,
-        };
+        let shader = device.create_shader_module(include_wgsl!("../resources/shader.wgsl"));
 
-        let mut result = Self {
+        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Render Pipeline Layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
+
+        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: Some("Render pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[],
+            },
+            fragment: Some(FragmentState {
+                module: &shader,
+                entry_point: "fs_main",
+                targets: &[Some(ColorTargetState {
+                    format: config.format,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
+                polygon_mode: PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
+        let result = Self {
             surface,
             device,
             queue,
             config,
             size,
             clear_color,
+            render_pipeline,
         };
 
-        result.update_color(&cursor_position);
-
-        window.set_cursor_position(cursor_position)?;
+        result.set_cursor_to_center(window)?;
 
         Ok(result)
     }
@@ -112,7 +153,7 @@ impl State {
             });
 
         {
-            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &view,
@@ -124,6 +165,9 @@ impl State {
                 })],
                 depth_stencil_attachment: None,
             });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
         }
 
         self.queue.submit(iter::once(encoder.finish()));
@@ -139,5 +183,16 @@ impl State {
     #[inline]
     pub fn get_size(&self) -> PhysicalSize<u32> {
         self.size
+    }
+
+    fn set_cursor_to_center(&self, window: &Window) -> Result<(), Error> {
+        let cursor_position = PhysicalPosition::<f64> {
+            x: f64::from(self.size.width) / 2.0,
+            y: f64::from(self.size.height) / 2.0,
+        };
+
+        window.set_cursor_position(cursor_position)?;
+
+        Ok(())
     }
 }
