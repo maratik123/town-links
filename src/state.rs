@@ -54,8 +54,8 @@ impl State {
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(&adapter)[0],
-            width: Self::valid_dim(size.width),
-            height: Self::valid_dim(size.height),
+            width: size.width.max(1),
+            height: size.height.max(1),
             present_mode: PresentMode::AutoVsync,
         };
         surface.configure(&device, &config);
