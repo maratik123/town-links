@@ -22,7 +22,7 @@ pub struct State {
     config: SurfaceConfiguration,
     size: PhysicalSize<u32>,
     clear_color: Color,
-    render_pipeline: RenderPipeline,
+    _render_pipeline: RenderPipeline,
 }
 
 impl State {
@@ -117,7 +117,7 @@ impl State {
             config,
             size,
             clear_color,
-            render_pipeline,
+            _render_pipeline: render_pipeline,
         };
 
         result.set_cursor_to_center(window)?;
