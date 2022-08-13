@@ -22,7 +22,7 @@ pub struct State {
     config: SurfaceConfiguration,
     size: PhysicalSize<u32>,
     clear_color: Color,
-    _render_pipeline: RenderPipeline,
+    render_pipeline: RenderPipeline,
 }
 
 impl State {
@@ -117,7 +117,7 @@ impl State {
             config,
             size,
             clear_color,
-            _render_pipeline: render_pipeline,
+            render_pipeline,
         };
 
         result.set_cursor_to_center(window)?;
@@ -153,7 +153,7 @@ impl State {
             });
 
         {
-            let _render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
+            let mut render_pass = encoder.begin_render_pass(&RenderPassDescriptor {
                 label: Some("Render pass"),
                 color_attachments: &[Some(RenderPassColorAttachment {
                     view: &view,
@@ -165,6 +165,9 @@ impl State {
                 })],
                 depth_stencil_attachment: None,
             });
+
+            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.draw(0..3, 0..1);
         }
 
         self.queue.submit(iter::once(encoder.finish()));
