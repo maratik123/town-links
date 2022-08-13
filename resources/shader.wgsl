@@ -1,6 +1,6 @@
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
-    position: vec2<f32>,
+    @location(0) position: vec2<f32>,
 }
 
 @vertex
@@ -22,5 +22,5 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
 @fragment
 fn fs_challenge(in: VertexOutput) -> @location(0) vec4<f32> {
-    return vec4<f32>(in.position, 0.5, 1.0);
+    return vec4<f32>(in.position, 0.1, 1.0);
 }

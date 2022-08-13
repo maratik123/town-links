@@ -9,6 +9,7 @@ use wgpu::{
     RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor,
     VertexState,
 };
+use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
     event::WindowEvent,
@@ -23,6 +24,8 @@ pub struct State {
     size: PhysicalSize<u32>,
     clear_color: Color,
     render_pipeline: RenderPipeline,
+    challenge_pipeline: RenderPipeline,
+    challenge: bool,
 }
 
 impl State {
@@ -110,6 +113,41 @@ impl State {
             multiview: None,
         });
 
+        let challenge_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
+            label: Some("Challenge render pipeline"),
+            layout: Some(&render_pipeline_layout),
+            vertex: VertexState {
+                module: &shader,
+                entry_point: "vs_main",
+                buffers: &[],
+            },
+            fragment: Some(FragmentState {
+                module: &shader,
+                entry_point: "fs_challenge",
+                targets: &[Some(ColorTargetState {
+                    format: config.format,
+                    blend: Some(BlendState::REPLACE),
+                    write_mask: ColorWrites::ALL,
+                })],
+            }),
+            primitive: PrimitiveState {
+                topology: PrimitiveTopology::TriangleList,
+                strip_index_format: None,
+                front_face: FrontFace::Ccw,
+                cull_mode: Some(Face::Back),
+                polygon_mode: PolygonMode::Fill,
+                unclipped_depth: false,
+                conservative: false,
+            },
+            depth_stencil: None,
+            multisample: MultisampleState {
+                count: 1,
+                mask: !0,
+                alpha_to_coverage_enabled: false,
+            },
+            multiview: None,
+        });
+
         let result = Self {
             surface,
             device,
@@ -118,6 +156,8 @@ impl State {
             size,
             clear_color,
             render_pipeline,
+            challenge_pipeline,
+            challenge: false,
         };
 
         result.set_cursor_to_center(window)?;
@@ -135,8 +175,22 @@ impl State {
         self.surface.configure(&self.device, &self.config);
     }
 
-    pub fn input(&mut self, _event: &WindowEvent) -> bool {
-        false
+    pub fn input(&mut self, event: &WindowEvent) -> bool {
+        match event {
+            WindowEvent::KeyboardInput {
+                input:
+                    KeyboardInput {
+                        state: ElementState::Pressed,
+                        virtual_keycode: Some(VirtualKeyCode::Space),
+                        ..
+                    },
+                ..
+            } => {
+                self.inverse_challenge();
+                true
+            }
+            _ => false,
+        }
     }
 
     pub fn update(&mut self) {}
@@ -166,7 +220,12 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            render_pass.set_pipeline(&self.render_pipeline);
+            render_pass.set_pipeline(if self.challenge {
+                &self.challenge_pipeline
+            } else {
+                &self.render_pipeline
+            });
+
             render_pass.draw(0..3, 0..1);
         }
 
@@ -183,6 +242,11 @@ impl State {
     #[inline]
     pub fn get_size(&self) -> PhysicalSize<u32> {
         self.size
+    }
+
+    #[inline]
+    pub fn inverse_challenge(&mut self) {
+        self.challenge = !self.challenge;
     }
 
     fn set_cursor_to_center(&self, window: &Window) -> Result<(), Error> {
