@@ -44,12 +44,14 @@ pub async fn run() -> Result<(), Error> {
             state.update();
             match state.render() {
                 Ok(_) => {}
-                Err(Error::WgpuSurfaceError(SurfaceError::Lost)) => state.resize(state.get_size()),
-                Err(err @ Error::WgpuSurfaceError(SurfaceError::OutOfMemory)) => {
-                    eprintln!("{:?}", err);
-                    *control_flow = ControlFlow::Exit;
-                }
-                Err(err) => eprintln!("{:?}", err),
+                Err(err) => match err {
+                    Error::WgpuSurfaceError(SurfaceError::Lost) => state.resize(state.get_size()),
+                    Error::WgpuSurfaceError(SurfaceError::OutOfMemory) => {
+                        eprintln!("{:?}", err);
+                        *control_flow = ControlFlow::Exit;
+                    }
+                    err => eprintln!("{:?}", err),
+                },
             }
         }
         Event::MainEventsCleared => window.request_redraw(),
