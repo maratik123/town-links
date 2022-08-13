@@ -182,11 +182,6 @@ impl State {
         self.size
     }
 
-    #[inline]
-    fn valid_dim(x: u32) -> u32 {
-        x.max(1)
-    }
-
     fn set_cursor_to_center(&self, window: &Window) -> Result<(), Error> {
         let cursor_position = PhysicalPosition::<f64> {
             x: f64::from(self.size.width) / 2.0,
