@@ -3,67 +3,16 @@ use std::iter;
 use wgpu::{
     Backends, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, Instance,
     Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, SurfaceError,
-    TextureUsages, TextureViewDescriptor,
+    RenderPassDescriptor, RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages,
+    TextureViewDescriptor,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},
-    event_loop::{ControlFlow, EventLoop},
-    window::{Window, WindowBuilder},
+    event::WindowEvent,
+    window::Window,
 };
 
-pub async fn run() -> Result<(), Error> {
-    env_logger::try_init()?;
-    let event_loop = EventLoop::new();
-    let window = WindowBuilder::new().build(&event_loop)?;
-
-    let mut state = State::new(&window).await?;
-
-    event_loop.run(move |event, _, control_flow| match event {
-        Event::WindowEvent {
-            ref event,
-            window_id,
-        } if window.id() == window_id => {
-            if !state.input(event) {
-                match event {
-                    WindowEvent::CloseRequested
-                    | WindowEvent::KeyboardInput {
-                        input:
-                            KeyboardInput {
-                                state: ElementState::Pressed,
-                                virtual_keycode: Some(VirtualKeyCode::Escape),
-                                ..
-                            },
-                        ..
-                    } => *control_flow = ControlFlow::Exit,
-                    WindowEvent::Resized(physical_size) => state.resize(*physical_size),
-                    WindowEvent::ScaleFactorChanged { new_inner_size, .. } => {
-                        state.resize(**new_inner_size)
-                    }
-                    WindowEvent::CursorMoved { position, .. } => state.update_color(position),
-                    _ => {}
-                }
-            }
-        }
-        Event::RedrawRequested(window_id) if window.id() == window_id => {
-            state.update();
-            match state.render() {
-                Ok(_) => {}
-                Err(Error::WgpuSurfaceError(SurfaceError::Lost)) => state.resize(state.size),
-                Err(err @ Error::WgpuSurfaceError(SurfaceError::OutOfMemory)) => {
-                    eprintln!("{:?}", err);
-                    *control_flow = ControlFlow::Exit;
-                }
-                Err(err) => eprintln!("{:?}", err),
-            }
-        }
-        Event::MainEventsCleared => window.request_redraw(),
-        _ => {}
-    });
-}
-
-struct State {
+pub struct State {
     surface: Surface,
     device: Device,
     queue: Queue,
@@ -73,7 +22,7 @@ struct State {
 }
 
 impl State {
-    async fn new(window: &Window) -> Result<Self, Error> {
+    pub async fn new(window: &Window) -> Result<Self, Error> {
         let size = window.inner_size();
 
         let instance = Instance::new(Backends::all());
@@ -135,7 +84,7 @@ impl State {
         Ok(result)
     }
 
-    fn resize(&mut self, new_size: PhysicalSize<u32>) {
+    pub fn resize(&mut self, new_size: PhysicalSize<u32>) {
         if new_size.width == 0 || new_size.height == 0 {
             return;
         }
@@ -145,13 +94,13 @@ impl State {
         self.surface.configure(&self.device, &self.config);
     }
 
-    fn input(&mut self, _event: &WindowEvent) -> bool {
+    pub fn input(&mut self, _event: &WindowEvent) -> bool {
         false
     }
 
-    fn update(&mut self) {}
+    pub fn update(&mut self) {}
 
-    fn render(&mut self) -> Result<(), Error> {
+    pub fn render(&mut self) -> Result<(), Error> {
         let output = self.surface.get_current_texture()?;
         let view = output
             .texture
@@ -182,9 +131,14 @@ impl State {
         Ok(())
     }
 
-    fn update_color(&mut self, position: &PhysicalPosition<f64>) {
+    pub fn update_color(&mut self, position: &PhysicalPosition<f64>) {
         self.clear_color.r = position.x / f64::from(self.size.width);
         self.clear_color.b = position.y / f64::from(self.size.height);
+    }
+
+    #[inline]
+    pub fn get_size(&self) -> PhysicalSize<u32> {
+        self.size
     }
 
     #[inline]
