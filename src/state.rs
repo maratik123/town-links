@@ -50,8 +50,8 @@ impl State {
         let config = SurfaceConfiguration {
             usage: TextureUsages::RENDER_ATTACHMENT,
             format: surface.get_supported_formats(&adapter)[0],
-            width: Self::valid_dim(size.width),
-            height: Self::valid_dim(size.height),
+            width: size.width.max(1),
+            height: size.height.max(1),
             present_mode: PresentMode::AutoVsync,
         };
         surface.configure(&device, &config);
@@ -139,10 +139,5 @@ impl State {
     #[inline]
     pub fn get_size(&self) -> PhysicalSize<u32> {
         self.size
-    }
-
-    #[inline]
-    fn valid_dim(x: u32) -> u32 {
-        x.max(1)
     }
 }
