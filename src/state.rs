@@ -1,11 +1,15 @@
-use crate::{err::Error, pipeline::create_pipeline, vertex::VERTICES};
+use crate::{
+    err::Error,
+    pipeline::create_pipeline,
+    vertex::{INDICES, VERTICES},
+};
 use bytemuck::cast_slice;
 use std::iter;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     Backends, Buffer, BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor,
-    Features, Instance, Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RequestAdapterOptions,
+    Features, IndexFormat, Instance, Limits, LoadOp, Operations, PowerPreference, PresentMode,
+    Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RequestAdapterOptions,
     Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor,
 };
 use winit::{
@@ -25,7 +29,8 @@ pub struct State {
     challenge_pipeline: RenderPipeline,
     challenge: bool,
     vertex_buffer: Buffer,
-    num_vertices: u32,
+    index_buffer: Buffer,
+    num_indices: u32,
 }
 
 impl State {
@@ -78,7 +83,13 @@ impl State {
             usage: BufferUsages::VERTEX,
         });
 
-        let num_vertices = VERTICES.len() as u32;
+        let index_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Index buffer"),
+            contents: cast_slice(INDICES),
+            usage: BufferUsages::INDEX,
+        });
+
+        let num_indices = INDICES.len() as u32;
 
         let result = Self {
             surface,
@@ -91,7 +102,8 @@ impl State {
             challenge_pipeline,
             challenge: false,
             vertex_buffer,
-            num_vertices,
+            index_buffer,
+            num_indices,
         };
 
         result.set_cursor_to_center(window)?;
@@ -160,7 +172,8 @@ impl State {
             } else {
                 render_pass.set_pipeline(&self.render_pipeline);
                 render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-                render_pass.draw(0..self.num_vertices, 0..1);
+                render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
+                render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
             }
         }
 
