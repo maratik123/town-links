@@ -1,13 +1,11 @@
 use crate::err::Error;
+use crate::pipeline::create_pipeline;
 use std::iter;
 use wgpu::{
-    include_wgsl, Backends, BlendState, Color, ColorTargetState, ColorWrites,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Face, Features, FragmentState, FrontFace,
-    Instance, Limits, LoadOp, MultisampleState, Operations, PipelineLayoutDescriptor, PolygonMode,
-    PowerPreference, PresentMode, PrimitiveState, PrimitiveTopology, Queue,
-    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RenderPipelineDescriptor,
-    RequestAdapterOptions, Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor,
-    VertexState,
+    Backends, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, Instance,
+    Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RequestAdapterOptions, Surface, SurfaceConfiguration,
+    TextureUsages, TextureViewDescriptor,
 };
 use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::{
@@ -70,83 +68,7 @@ impl State {
             a: 1.0,
         };
 
-        let shader = device.create_shader_module(include_wgsl!("../resources/shader.wgsl"));
-
-        let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
-            label: Some("Render Pipeline Layout"),
-            bind_group_layouts: &[],
-            push_constant_ranges: &[],
-        });
-
-        let render_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Render pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[],
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: "fs_main",
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                polygon_mode: PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
-
-        let challenge_pipeline = device.create_render_pipeline(&RenderPipelineDescriptor {
-            label: Some("Challenge render pipeline"),
-            layout: Some(&render_pipeline_layout),
-            vertex: VertexState {
-                module: &shader,
-                entry_point: "vs_main",
-                buffers: &[],
-            },
-            fragment: Some(FragmentState {
-                module: &shader,
-                entry_point: "fs_challenge",
-                targets: &[Some(ColorTargetState {
-                    format: config.format,
-                    blend: Some(BlendState::REPLACE),
-                    write_mask: ColorWrites::ALL,
-                })],
-            }),
-            primitive: PrimitiveState {
-                topology: PrimitiveTopology::TriangleList,
-                strip_index_format: None,
-                front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
-                polygon_mode: PolygonMode::Fill,
-                unclipped_depth: false,
-                conservative: false,
-            },
-            depth_stencil: None,
-            multisample: MultisampleState {
-                count: 1,
-                mask: !0,
-                alpha_to_coverage_enabled: false,
-            },
-            multiview: None,
-        });
+        let (render_pipeline, challenge_pipeline) = create_pipeline(&device, &config);
 
         let result = Self {
             surface,
