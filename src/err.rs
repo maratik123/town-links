@@ -1,9 +1,11 @@
+use image::ImageError;
 use log::SetLoggerError;
 use wgpu::{RequestDeviceError, SurfaceError};
 use winit::error::{ExternalError, OsError};
 
 #[derive(Debug)]
 pub enum Error {
+    ImageImageError(ImageError),
     LogSetLoggerError(SetLoggerError),
     RequestAdapterError,
     WgpuRequestDeviceError(RequestDeviceError),
@@ -44,5 +46,12 @@ impl From<ExternalError> for Error {
     #[inline]
     fn from(err: ExternalError) -> Self {
         Self::WinitExternalError(err)
+    }
+}
+
+impl From<ImageError> for Error {
+    #[inline]
+    fn from(err: ImageError) -> Self {
+        Self::ImageImageError(err)
     }
 }

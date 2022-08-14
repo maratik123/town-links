@@ -4,13 +4,19 @@ use crate::{
     vertex::{INDICES, INDICES_CHALLENGE2, VERTICES},
 };
 use bytemuck::cast_slice;
-use std::iter;
+use image::{load_from_memory_with_format, GenericImageView, ImageFormat};
+use std::{iter, num::NonZeroU32};
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    Backends, Buffer, BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor,
-    Features, IndexFormat, Instance, Limits, LoadOp, Operations, PowerPreference, PresentMode,
-    Queue, RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RequestAdapterOptions,
-    Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor,
+    AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry,
+    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer,
+    BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Features,
+    FilterMode, ImageCopyTexture, ImageDataLayout, IndexFormat, Instance, Limits, LoadOp,
+    Operations, Origin3d, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RequestAdapterOptions, SamplerBindingType,
+    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, TextureAspect,
+    TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
+    TextureViewDescriptor, TextureViewDimension,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -38,6 +44,7 @@ pub struct State {
     num_indices: u32,
     index_buffer_challenge2: Buffer,
     num_indices_challenge2: u32,
+    diffuse_bind_group: BindGroup,
 }
 
 impl State {
@@ -75,6 +82,91 @@ impl State {
         };
         surface.configure(&device, &config);
 
+        let diffuse_bytes = include_bytes!("../resources/happy-tree.png");
+        let diffuse_image = load_from_memory_with_format(diffuse_bytes, ImageFormat::Png)?;
+        let diffuse_rgba = diffuse_image.to_rgba8();
+        let (dimensions_x, dimensions_y) = diffuse_image.dimensions();
+
+        let texture_size = Extent3d {
+            width: dimensions_x,
+            height: dimensions_y,
+            depth_or_array_layers: 1,
+        };
+        let diffuse_texture = device.create_texture(&TextureDescriptor {
+            size: texture_size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Rgba8UnormSrgb,
+            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
+            label: Some("Diffuse texture"),
+        });
+
+        queue.write_texture(
+            ImageCopyTexture {
+                texture: &diffuse_texture,
+                mip_level: 0,
+                origin: Origin3d::ZERO,
+                aspect: TextureAspect::All,
+            },
+            &diffuse_rgba,
+            ImageDataLayout {
+                offset: 0,
+                bytes_per_row: NonZeroU32::new(4 * dimensions_x),
+                rows_per_image: NonZeroU32::new(dimensions_y),
+            },
+            texture_size,
+        );
+
+        let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
+        let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
+            address_mode_u: AddressMode::ClampToEdge,
+            address_mode_v: AddressMode::ClampToEdge,
+            address_mode_w: AddressMode::ClampToEdge,
+            mag_filter: FilterMode::Linear,
+            min_filter: FilterMode::Nearest,
+            mipmap_filter: FilterMode::Nearest,
+            ..Default::default()
+        });
+
+        let texture_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[
+                    BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Texture {
+                            multisampled: false,
+                            view_dimension: TextureViewDimension::D2,
+                            sample_type: TextureSampleType::Float { filterable: true },
+                        },
+                        count: None,
+                    },
+                    BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: ShaderStages::FRAGMENT,
+                        ty: BindingType::Sampler(SamplerBindingType::Filtering),
+                        count: None,
+                    },
+                ],
+                label: Some("Texture binding group layout"),
+            });
+
+        let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&diffuse_texture_view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&diffuse_sampler),
+                },
+            ],
+            label: Some("Diffuse bind group descriptor"),
+        });
+
         let clear_color = Color {
             r: 0.0,
             g: 0.2,
@@ -82,7 +174,8 @@ impl State {
             a: 1.0,
         };
 
-        let (render_pipeline, challenge_pipeline) = create_pipeline(&device, &config);
+        let (render_pipeline, challenge_pipeline) =
+            create_pipeline(&device, &config, &[&texture_bind_group_layout]);
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
@@ -121,6 +214,7 @@ impl State {
             num_indices,
             index_buffer_challenge2,
             num_indices_challenge2,
+            diffuse_bind_group,
         };
 
         result.set_cursor_to_center(window)?;
@@ -186,6 +280,7 @@ impl State {
             match self.challenge {
                 None | Some(Challenge::Second) => {
                     render_pass.set_pipeline(&self.render_pipeline);
+                    render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
                     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                     let (index_buffer, num_indices) =
                         if let Some(Challenge::Second) = self.challenge {

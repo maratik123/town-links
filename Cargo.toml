@@ -4,8 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bytemuck = {version = "1.11", features = ["derive"]}
+bytemuck = { version = "1.12", features = ["derive"] }
 env_logger = "0.9"
+image = { version = "0.24", default-features = false, features = ["png"] }
 #imgui = "0.8"
 #imgui-wgpu = "0.20"
 #imgui-winit-support = { version = "0.8", features = ["winit-26"], default-features = false }

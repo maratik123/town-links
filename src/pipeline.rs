@@ -1,40 +1,46 @@
 use crate::vertex::Vertex;
 use wgpu::{
-    include_wgsl, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState,
-    FrontFace, MultisampleState, PipelineLayout, PipelineLayoutDescriptor, PolygonMode,
-    PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule,
-    SurfaceConfiguration, VertexBufferLayout, VertexState,
+    include_wgsl, BindGroupLayout, BlendState, ColorTargetState, ColorWrites, Device, Face,
+    FragmentState, FrontFace, MultisampleState, PipelineLayout, PipelineLayoutDescriptor,
+    PolygonMode, PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor,
+    ShaderModule, SurfaceConfiguration, VertexBufferLayout, VertexState,
 };
 
-pub fn create_pipeline(
+pub fn create_pipeline<'a>(
     device: &Device,
     config: &SurfaceConfiguration,
+    bind_group_layouts: &'a [&'a BindGroupLayout],
 ) -> (RenderPipeline, RenderPipeline) {
     let shader = device.create_shader_module(include_wgsl!("../resources/shader.wgsl"));
+    let challenge_shader =
+        device.create_shader_module(include_wgsl!("../resources/challenge.wgsl"));
 
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
-        bind_group_layouts: &[],
+        bind_group_layouts,
         push_constant_ranges: &[],
     });
+
+    let challenge_render_pipeline_layout =
+        device.create_pipeline_layout(&PipelineLayoutDescriptor {
+            label: Some("Challenge Render Pipeline Layout"),
+            bind_group_layouts: &[],
+            push_constant_ranges: &[],
+        });
 
     let render_pipeline = create_pipeline_int(
         device,
         config,
         &render_pipeline_layout,
         &shader,
-        "vs_main",
-        "fs_main",
         &[Vertex::desc()],
     );
 
     let challenge_pipeline = create_pipeline_int(
         device,
         config,
-        &render_pipeline_layout,
-        &shader,
-        "vs_challenge",
-        "fs_challenge",
+        &challenge_render_pipeline_layout,
+        &challenge_shader,
         &[],
     );
 
@@ -46,8 +52,6 @@ fn create_pipeline_int<'a>(
     config: &SurfaceConfiguration,
     pipeline_layout: &PipelineLayout,
     shader: &ShaderModule,
-    vs_entry_point: &str,
-    fs_entry_point: &str,
     buffers: &'a [VertexBufferLayout<'a>],
 ) -> RenderPipeline {
     device.create_render_pipeline(&RenderPipelineDescriptor {
@@ -55,12 +59,12 @@ fn create_pipeline_int<'a>(
         layout: Some(pipeline_layout),
         vertex: VertexState {
             module: shader,
-            entry_point: vs_entry_point,
+            entry_point: "vs_main",
             buffers,
         },
         fragment: Some(FragmentState {
             module: shader,
-            entry_point: fs_entry_point,
+            entry_point: "fs_main",
             targets: &[Some(ColorTargetState {
                 format: config.format,
                 blend: Some(BlendState::REPLACE),
