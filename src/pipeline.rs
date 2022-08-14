@@ -1,3 +1,4 @@
+use crate::vertex::Vertex;
 use wgpu::{
     include_wgsl, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState,
     FrontFace, MultisampleState, PipelineLayout, PipelineLayoutDescriptor, PolygonMode,
@@ -44,7 +45,7 @@ fn create_pipeline_int(
         vertex: VertexState {
             module: shader,
             entry_point: "vs_main",
-            buffers: &[],
+            buffers: &[Vertex::desc()],
         },
         fragment: Some(FragmentState {
             module: shader,

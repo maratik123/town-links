@@ -1,5 +1,4 @@
-use crate::err::Error;
-use crate::state::State;
+use crate::{err::Error, state::State};
 use wgpu::SurfaceError;
 use winit::{
     event::{ElementState, Event, KeyboardInput, VirtualKeyCode, WindowEvent},

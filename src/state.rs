@@ -1,16 +1,16 @@
-use crate::err::Error;
-use crate::pipeline::create_pipeline;
+use crate::{err::Error, pipeline::create_pipeline, vertex::VERTICES};
+use bytemuck::cast_slice;
 use std::iter;
 use wgpu::{
-    Backends, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, Instance,
-    Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RequestAdapterOptions, Surface, SurfaceConfiguration,
-    TextureUsages, TextureViewDescriptor,
+    util::{BufferInitDescriptor, DeviceExt},
+    Backends, Buffer, BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor,
+    Features, Instance, Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue,
+    RenderPassColorAttachment, RenderPassDescriptor, RenderPipeline, RequestAdapterOptions,
+    Surface, SurfaceConfiguration, TextureUsages, TextureViewDescriptor,
 };
-use winit::event::{ElementState, KeyboardInput, VirtualKeyCode};
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
-    event::WindowEvent,
+    event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window,
 };
 
@@ -24,6 +24,7 @@ pub struct State {
     render_pipeline: RenderPipeline,
     challenge_pipeline: RenderPipeline,
     challenge: bool,
+    vertex_buffer: Buffer,
 }
 
 impl State {
@@ -70,6 +71,12 @@ impl State {
 
         let (render_pipeline, challenge_pipeline) = create_pipeline(&device, &config);
 
+        let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Vertex buffer"),
+            contents: cast_slice(VERTICES),
+            usage: BufferUsages::VERTEX,
+        });
+
         let result = Self {
             surface,
             device,
@@ -80,6 +87,7 @@ impl State {
             render_pipeline,
             challenge_pipeline,
             challenge: false,
+            vertex_buffer,
         };
 
         result.set_cursor_to_center(window)?;
