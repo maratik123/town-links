@@ -30,9 +30,18 @@ pub const VERTICES: &[Vertex] = &[
         position: [0.44147372, 0.2347359, 0.0],
         color: [0.5, 0.0, 0.5],
     },
+    Vertex {
+        position: [0.17732481, 0.46356988, 0.0],
+        color: [0.5, 0.0, 0.5],
+    },
+    Vertex {
+        position: [0.10024225, -0.42836308, 0.0],
+        color: [0.5, 0.0, 0.5],
+    },
 ];
 
 pub const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
+pub const INDICES_CHALLENGE2: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, 5, 0, 4, 2, 6, 3];
 
 impl Vertex {
     const ATTRIBS: [VertexAttribute; 2] = vertex_attr_array![0 => Float32x3, 1 => Float32x3];

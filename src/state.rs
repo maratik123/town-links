@@ -1,7 +1,7 @@
 use crate::{
     err::Error,
     pipeline::create_pipeline,
-    vertex::{INDICES, VERTICES},
+    vertex::{INDICES, INDICES_CHALLENGE2, VERTICES},
 };
 use bytemuck::cast_slice;
 use std::iter;
@@ -18,6 +18,11 @@ use winit::{
     window::Window,
 };
 
+enum Challenge {
+    First,
+    Second,
+}
+
 pub struct State {
     surface: Surface,
     device: Device,
@@ -27,10 +32,12 @@ pub struct State {
     clear_color: Color,
     render_pipeline: RenderPipeline,
     challenge_pipeline: RenderPipeline,
-    challenge: bool,
+    challenge: Option<Challenge>,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     num_indices: u32,
+    index_buffer_challenge2: Buffer,
+    num_indices_challenge2: u32,
 }
 
 impl State {
@@ -91,6 +98,14 @@ impl State {
 
         let num_indices = INDICES.len() as u32;
 
+        let index_buffer_challenge2 = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Index buffer challenge"),
+            contents: cast_slice(INDICES_CHALLENGE2),
+            usage: BufferUsages::INDEX,
+        });
+
+        let num_indices_challenge2 = INDICES_CHALLENGE2.len() as u32;
+
         let result = Self {
             surface,
             device,
@@ -100,10 +115,12 @@ impl State {
             clear_color,
             render_pipeline,
             challenge_pipeline,
-            challenge: false,
+            challenge: None,
             vertex_buffer,
             index_buffer,
             num_indices,
+            index_buffer_challenge2,
+            num_indices_challenge2,
         };
 
         result.set_cursor_to_center(window)?;
@@ -132,7 +149,7 @@ impl State {
                     },
                 ..
             } => {
-                self.inverse_challenge();
+                self.rotate_challenge();
                 true
             }
             _ => false,
@@ -166,14 +183,23 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            if self.challenge {
-                render_pass.set_pipeline(&self.challenge_pipeline);
-                render_pass.draw(0..3, 0..1);
-            } else {
-                render_pass.set_pipeline(&self.render_pipeline);
-                render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-                render_pass.set_index_buffer(self.index_buffer.slice(..), IndexFormat::Uint16);
-                render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
+            match self.challenge {
+                None | Some(Challenge::Second) => {
+                    render_pass.set_pipeline(&self.render_pipeline);
+                    render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                    let (index_buffer, num_indices) =
+                        if let Some(Challenge::Second) = self.challenge {
+                            (&self.index_buffer_challenge2, self.num_indices_challenge2)
+                        } else {
+                            (&self.index_buffer, self.num_indices)
+                        };
+                    render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint16);
+                    render_pass.draw_indexed(0..num_indices, 0, 0..1);
+                }
+                Some(Challenge::First) => {
+                    render_pass.set_pipeline(&self.challenge_pipeline);
+                    render_pass.draw(0..3, 0..1);
+                }
             }
         }
 
@@ -193,8 +219,12 @@ impl State {
     }
 
     #[inline]
-    pub fn inverse_challenge(&mut self) {
-        self.challenge = !self.challenge;
+    pub fn rotate_challenge(&mut self) {
+        self.challenge = match self.challenge {
+            None => Some(Challenge::First),
+            Some(Challenge::First) => Some(Challenge::Second),
+            Some(Challenge::Second) => None,
+        };
     }
 
     fn set_cursor_to_center(&self, window: &Window) -> Result<(), Error> {
