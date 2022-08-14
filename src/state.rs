@@ -25,6 +25,7 @@ pub struct State {
     challenge_pipeline: RenderPipeline,
     challenge: bool,
     vertex_buffer: Buffer,
+    num_vertices: u32,
 }
 
 impl State {
@@ -77,6 +78,8 @@ impl State {
             usage: BufferUsages::VERTEX,
         });
 
+        let num_vertices = VERTICES.len() as u32;
+
         let result = Self {
             surface,
             device,
@@ -88,6 +91,7 @@ impl State {
             challenge_pipeline,
             challenge: false,
             vertex_buffer,
+            num_vertices,
         };
 
         result.set_cursor_to_center(window)?;
@@ -150,13 +154,14 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            render_pass.set_pipeline(if self.challenge {
-                &self.challenge_pipeline
+            if self.challenge {
+                render_pass.set_pipeline(&self.challenge_pipeline);
+                render_pass.draw(0..3, 0..1);
             } else {
-                &self.render_pipeline
-            });
-
-            render_pass.draw(0..3, 0..1);
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
+                render_pass.draw(0..self.num_vertices, 0..1);
+            }
         }
 
         self.queue.submit(iter::once(encoder.finish()));

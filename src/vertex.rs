@@ -28,7 +28,7 @@ impl Vertex {
     const ATTRIBS: [VertexAttribute; 2] = vertex_attr_array![0 => Float32x3, 1 => Float32x3];
 
     #[inline]
-    pub fn desc<'a>() -> VertexBufferLayout<'a> {
+    pub const fn desc<'a>() -> VertexBufferLayout<'a> {
         VertexBufferLayout {
             array_stride: mem::size_of::<Self>() as BufferAddress,
             step_mode: VertexStepMode::Vertex,

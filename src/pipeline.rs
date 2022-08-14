@@ -3,7 +3,7 @@ use wgpu::{
     include_wgsl, BlendState, ColorTargetState, ColorWrites, Device, Face, FragmentState,
     FrontFace, MultisampleState, PipelineLayout, PipelineLayoutDescriptor, PolygonMode,
     PrimitiveState, PrimitiveTopology, RenderPipeline, RenderPipelineDescriptor, ShaderModule,
-    SurfaceConfiguration, VertexState,
+    SurfaceConfiguration, VertexBufferLayout, VertexState,
 };
 
 pub fn create_pipeline(
@@ -18,34 +18,45 @@ pub fn create_pipeline(
         push_constant_ranges: &[],
     });
 
-    let render_pipeline =
-        create_pipeline_int(device, config, &render_pipeline_layout, &shader, "fs_main");
+    let render_pipeline = create_pipeline_int(
+        device,
+        config,
+        &render_pipeline_layout,
+        &shader,
+        "vs_main",
+        "fs_main",
+        &[Vertex::desc()],
+    );
 
     let challenge_pipeline = create_pipeline_int(
         device,
         config,
         &render_pipeline_layout,
         &shader,
+        "vs_challenge",
         "fs_challenge",
+        &[],
     );
 
     (render_pipeline, challenge_pipeline)
 }
 
-fn create_pipeline_int(
+fn create_pipeline_int<'a>(
     device: &Device,
     config: &SurfaceConfiguration,
     pipeline_layout: &PipelineLayout,
     shader: &ShaderModule,
+    vs_entry_point: &str,
     fs_entry_point: &str,
+    buffers: &'a [VertexBufferLayout<'a>],
 ) -> RenderPipeline {
     device.create_render_pipeline(&RenderPipelineDescriptor {
         label: Some("Render pipeline"),
         layout: Some(pipeline_layout),
         vertex: VertexState {
             module: shader,
-            entry_point: "vs_main",
-            buffers: &[Vertex::desc()],
+            entry_point: vs_entry_point,
+            buffers,
         },
         fragment: Some(FragmentState {
             module: shader,
