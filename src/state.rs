@@ -27,7 +27,7 @@ use winit::{
 enum ChallengeEnum {
     First,
     Second,
-    // Third,
+    Third,
 }
 
 #[derive(Copy, Clone, Default)]
@@ -39,9 +39,8 @@ impl Challenge {
         match challenge {
             None => Some(ChallengeEnum::First),
             Some(ChallengeEnum::First) => Some(ChallengeEnum::Second),
-            Some(ChallengeEnum::Second) => None,
-            // Some(ChallengeEnum::Second) => Some(ChallengeEnum::Third),
-            // Some(ChallengeEnum::Third) => None,
+            Some(ChallengeEnum::Second) => Some(ChallengeEnum::Third),
+            Some(ChallengeEnum::Third) => None,
         }
         .into()
     }
@@ -78,6 +77,7 @@ pub struct State {
     index_buffer_challenge2: Buffer,
     num_indices_challenge2: u32,
     diffuse_bind_group: BindGroup,
+    challenge3_bind_group: BindGroup,
     _diffuse_texture: TextureState,
 }
 
@@ -116,15 +116,6 @@ impl State {
         };
         surface.configure(&device, &config);
 
-        let diffuse_bytes = include_bytes!("../resources/happy-tree.png");
-        let diffuse_texture = TextureState::from_bytes(
-            &device,
-            &queue,
-            diffuse_bytes,
-            ImageFormat::Png,
-            "happy-tree.png texture",
-        )?;
-
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 entries: &[
@@ -148,6 +139,24 @@ impl State {
                 label: Some("Texture binding group layout"),
             });
 
+        let diffuse_bytes = include_bytes!("../resources/happy-tree.png");
+        let diffuse_texture = TextureState::from_bytes(
+            &device,
+            &queue,
+            diffuse_bytes,
+            ImageFormat::Png,
+            "happy-tree.png texture",
+        )?;
+
+        let challenge3_bytes = include_bytes!("../resources/house.png");
+        let challenge3_texture = TextureState::from_bytes(
+            &device,
+            &queue,
+            challenge3_bytes,
+            ImageFormat::Png,
+            "house.png texture",
+        )?;
+
         let diffuse_bind_group = device.create_bind_group(&BindGroupDescriptor {
             layout: &texture_bind_group_layout,
             entries: &[
@@ -161,6 +170,21 @@ impl State {
                 },
             ],
             label: Some("Diffuse bind group descriptor"),
+        });
+
+        let challenge3_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &texture_bind_group_layout,
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: BindingResource::TextureView(&challenge3_texture.view),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: BindingResource::Sampler(&challenge3_texture.sampler),
+                },
+            ],
+            label: Some("Challenge3 bind group descriptor"),
         });
 
         let clear_color = Color {
@@ -213,6 +237,7 @@ impl State {
             index_buffer_challenge2,
             num_indices_challenge2,
             diffuse_bind_group,
+            challenge3_bind_group,
             _diffuse_texture: diffuse_texture,
         };
 
@@ -277,9 +302,17 @@ impl State {
             });
 
             match self.challenge.into() {
-                None | Some(ChallengeEnum::Second) => {
+                None | Some(ChallengeEnum::Second | ChallengeEnum::Third) => {
                     render_pass.set_pipeline(&self.render_pipeline);
-                    render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
+                    render_pass.set_bind_group(
+                        0,
+                        if let Some(ChallengeEnum::Third) = self.challenge.into() {
+                            &self.challenge3_bind_group
+                        } else {
+                            &self.diffuse_bind_group
+                        },
+                        &[],
+                    );
                     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                     let (index_buffer, num_indices) =
                         if let Some(ChallengeEnum::Second) = self.challenge.into() {
