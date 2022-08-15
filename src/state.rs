@@ -1,4 +1,5 @@
 use crate::{
+    challenge::{Challenge, ChallengeEnum},
     err::Error,
     pipeline::create_pipeline,
     texture::TextureState,
@@ -22,44 +23,6 @@ use winit::{
     event::{ElementState, KeyboardInput, VirtualKeyCode, WindowEvent},
     window::Window,
 };
-
-#[derive(Copy, Clone)]
-enum ChallengeEnum {
-    First,
-    Second,
-    Third,
-}
-
-#[derive(Copy, Clone, Default)]
-struct Challenge(Option<ChallengeEnum>);
-
-impl Challenge {
-    fn rotate(self) -> Self {
-        let Self(challenge) = self;
-        match challenge {
-            None => Some(ChallengeEnum::First),
-            Some(ChallengeEnum::First) => Some(ChallengeEnum::Second),
-            Some(ChallengeEnum::Second) => Some(ChallengeEnum::Third),
-            Some(ChallengeEnum::Third) => None,
-        }
-        .into()
-    }
-}
-
-impl From<Option<ChallengeEnum>> for Challenge {
-    #[inline]
-    fn from(val: Option<ChallengeEnum>) -> Self {
-        Self(val)
-    }
-}
-
-impl From<Challenge> for Option<ChallengeEnum> {
-    #[inline]
-    fn from(val: Challenge) -> Self {
-        let Challenge(val) = val;
-        val
-    }
-}
 
 pub struct State {
     surface: Surface,
