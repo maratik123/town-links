@@ -1,22 +1,21 @@
 use crate::{
     err::Error,
     pipeline::create_pipeline,
+    texture::TextureState,
     vertex::{INDICES, INDICES_CHALLENGE2, VERTICES},
 };
 use bytemuck::cast_slice;
-use image::{load_from_memory_with_format, GenericImageView, ImageFormat};
-use std::{iter, num::NonZeroU32};
+use image::ImageFormat;
+use std::iter;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
-    AddressMode, Backends, BindGroup, BindGroupDescriptor, BindGroupEntry,
-    BindGroupLayoutDescriptor, BindGroupLayoutEntry, BindingResource, BindingType, Buffer,
-    BufferUsages, Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Extent3d, Features,
-    FilterMode, ImageCopyTexture, ImageDataLayout, IndexFormat, Instance, Limits, LoadOp,
-    Operations, Origin3d, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
-    RenderPassDescriptor, RenderPipeline, RequestAdapterOptions, SamplerBindingType,
-    SamplerDescriptor, ShaderStages, Surface, SurfaceConfiguration, TextureAspect,
-    TextureDescriptor, TextureDimension, TextureFormat, TextureSampleType, TextureUsages,
-    TextureViewDescriptor, TextureViewDimension,
+    Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
+    BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Color,
+    CommandEncoderDescriptor, Device, DeviceDescriptor, Features, IndexFormat, Instance, Limits,
+    LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
+    RenderPassDescriptor, RenderPipeline, RequestAdapterOptions, SamplerBindingType, ShaderStages,
+    Surface, SurfaceConfiguration, TextureSampleType, TextureUsages, TextureViewDescriptor,
+    TextureViewDimension,
 };
 use winit::{
     dpi::{PhysicalPosition, PhysicalSize},
@@ -24,9 +23,43 @@ use winit::{
     window::Window,
 };
 
-enum Challenge {
+#[derive(Copy, Clone)]
+enum ChallengeEnum {
     First,
     Second,
+    // Third,
+}
+
+#[derive(Copy, Clone, Default)]
+struct Challenge(Option<ChallengeEnum>);
+
+impl Challenge {
+    fn rotate(self) -> Self {
+        let Self(challenge) = self;
+        match challenge {
+            None => Some(ChallengeEnum::First),
+            Some(ChallengeEnum::First) => Some(ChallengeEnum::Second),
+            Some(ChallengeEnum::Second) => None,
+            // Some(ChallengeEnum::Second) => Some(ChallengeEnum::Third),
+            // Some(ChallengeEnum::Third) => None,
+        }
+        .into()
+    }
+}
+
+impl From<Option<ChallengeEnum>> for Challenge {
+    #[inline]
+    fn from(val: Option<ChallengeEnum>) -> Self {
+        Self(val)
+    }
+}
+
+impl From<Challenge> for Option<ChallengeEnum> {
+    #[inline]
+    fn from(val: Challenge) -> Self {
+        let Challenge(val) = val;
+        val
+    }
 }
 
 pub struct State {
@@ -38,13 +71,14 @@ pub struct State {
     clear_color: Color,
     render_pipeline: RenderPipeline,
     challenge_pipeline: RenderPipeline,
-    challenge: Option<Challenge>,
+    challenge: Challenge,
     vertex_buffer: Buffer,
     index_buffer: Buffer,
     num_indices: u32,
     index_buffer_challenge2: Buffer,
     num_indices_challenge2: u32,
     diffuse_bind_group: BindGroup,
+    _diffuse_texture: TextureState,
 }
 
 impl State {
@@ -83,51 +117,13 @@ impl State {
         surface.configure(&device, &config);
 
         let diffuse_bytes = include_bytes!("../resources/happy-tree.png");
-        let diffuse_image = load_from_memory_with_format(diffuse_bytes, ImageFormat::Png)?;
-        let diffuse_rgba = diffuse_image.to_rgba8();
-        let (dimensions_x, dimensions_y) = diffuse_image.dimensions();
-
-        let texture_size = Extent3d {
-            width: dimensions_x,
-            height: dimensions_y,
-            depth_or_array_layers: 1,
-        };
-        let diffuse_texture = device.create_texture(&TextureDescriptor {
-            size: texture_size,
-            mip_level_count: 1,
-            sample_count: 1,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Rgba8UnormSrgb,
-            usage: TextureUsages::TEXTURE_BINDING | TextureUsages::COPY_DST,
-            label: Some("Diffuse texture"),
-        });
-
-        queue.write_texture(
-            ImageCopyTexture {
-                texture: &diffuse_texture,
-                mip_level: 0,
-                origin: Origin3d::ZERO,
-                aspect: TextureAspect::All,
-            },
-            &diffuse_rgba,
-            ImageDataLayout {
-                offset: 0,
-                bytes_per_row: NonZeroU32::new(4 * dimensions_x),
-                rows_per_image: NonZeroU32::new(dimensions_y),
-            },
-            texture_size,
-        );
-
-        let diffuse_texture_view = diffuse_texture.create_view(&TextureViewDescriptor::default());
-        let diffuse_sampler = device.create_sampler(&SamplerDescriptor {
-            address_mode_u: AddressMode::ClampToEdge,
-            address_mode_v: AddressMode::ClampToEdge,
-            address_mode_w: AddressMode::ClampToEdge,
-            mag_filter: FilterMode::Linear,
-            min_filter: FilterMode::Nearest,
-            mipmap_filter: FilterMode::Nearest,
-            ..Default::default()
-        });
+        let diffuse_texture = TextureState::from_bytes(
+            &device,
+            &queue,
+            diffuse_bytes,
+            ImageFormat::Png,
+            "happy-tree.png texture",
+        )?;
 
         let texture_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
@@ -157,11 +153,11 @@ impl State {
             entries: &[
                 BindGroupEntry {
                     binding: 0,
-                    resource: BindingResource::TextureView(&diffuse_texture_view),
+                    resource: BindingResource::TextureView(&diffuse_texture.view),
                 },
                 BindGroupEntry {
                     binding: 1,
-                    resource: BindingResource::Sampler(&diffuse_sampler),
+                    resource: BindingResource::Sampler(&diffuse_texture.sampler),
                 },
             ],
             label: Some("Diffuse bind group descriptor"),
@@ -199,6 +195,8 @@ impl State {
 
         let num_indices_challenge2 = INDICES_CHALLENGE2.len() as u32;
 
+        let challenge = Challenge::default();
+
         let result = Self {
             surface,
             device,
@@ -208,13 +206,14 @@ impl State {
             clear_color,
             render_pipeline,
             challenge_pipeline,
-            challenge: None,
+            challenge,
             vertex_buffer,
             index_buffer,
             num_indices,
             index_buffer_challenge2,
             num_indices_challenge2,
             diffuse_bind_group,
+            _diffuse_texture: diffuse_texture,
         };
 
         result.set_cursor_to_center(window)?;
@@ -243,7 +242,7 @@ impl State {
                     },
                 ..
             } => {
-                self.rotate_challenge();
+                self.challenge = self.challenge.rotate();
                 true
             }
             _ => false,
@@ -277,13 +276,13 @@ impl State {
                 depth_stencil_attachment: None,
             });
 
-            match self.challenge {
-                None | Some(Challenge::Second) => {
+            match self.challenge.into() {
+                None | Some(ChallengeEnum::Second) => {
                     render_pass.set_pipeline(&self.render_pipeline);
                     render_pass.set_bind_group(0, &self.diffuse_bind_group, &[]);
                     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                     let (index_buffer, num_indices) =
-                        if let Some(Challenge::Second) = self.challenge {
+                        if let Some(ChallengeEnum::Second) = self.challenge.into() {
                             (&self.index_buffer_challenge2, self.num_indices_challenge2)
                         } else {
                             (&self.index_buffer, self.num_indices)
@@ -291,7 +290,7 @@ impl State {
                     render_pass.set_index_buffer(index_buffer.slice(..), IndexFormat::Uint16);
                     render_pass.draw_indexed(0..num_indices, 0, 0..1);
                 }
-                Some(Challenge::First) => {
+                Some(ChallengeEnum::First) => {
                     render_pass.set_pipeline(&self.challenge_pipeline);
                     render_pass.draw(0..3, 0..1);
                 }
@@ -311,15 +310,6 @@ impl State {
     #[inline]
     pub fn get_size(&self) -> PhysicalSize<u32> {
         self.size
-    }
-
-    #[inline]
-    pub fn rotate_challenge(&mut self) {
-        self.challenge = match self.challenge {
-            None => Some(Challenge::First),
-            Some(Challenge::First) => Some(Challenge::Second),
-            Some(Challenge::Second) => None,
-        };
     }
 
     fn set_cursor_to_center(&self, window: &Window) -> Result<(), Error> {
