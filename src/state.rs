@@ -1,4 +1,6 @@
+use crate::camera::CameraUniform;
 use crate::{
+    camera::Camera,
     challenge::{Challenge, ChallengeEnum},
     err::Error,
     pipeline::create_pipeline,
@@ -6,6 +8,7 @@ use crate::{
     vertex::{INDICES, INDICES_CHALLENGE2, VERTICES},
 };
 use bytemuck::cast_slice;
+use cgmath::Vector3;
 use image::ImageFormat;
 use std::iter;
 use wgpu::{
@@ -42,6 +45,7 @@ pub struct State {
     diffuse_bind_group: BindGroup,
     challenge3_bind_group: BindGroup,
     _diffuse_texture: TextureState,
+    camera: Camera,
 }
 
 impl State {
@@ -184,6 +188,19 @@ impl State {
 
         let challenge = Challenge::default();
 
+        let camera = Camera {
+            eye: (0.0, 1.0, 2.0).into(),
+            target: (0.0, 0.0, 0.0).into(),
+            up: Vector3::unit_y(),
+            aspect: config.width as f32 / config.height as f32,
+            fovy: 45.0,
+            znear: 0.1,
+            zfar: 100.0,
+        };
+
+        let mut camera_uniform = CameraUniform::default();
+        camera_uniform.update_view_proj(&camera);
+
         let result = Self {
             surface,
             device,
@@ -202,6 +219,7 @@ impl State {
             diffuse_bind_group,
             challenge3_bind_group,
             _diffuse_texture: diffuse_texture,
+            camera,
         };
 
         result.set_cursor_to_center(window)?;
@@ -299,8 +317,8 @@ impl State {
     }
 
     pub fn update_color(&mut self, position: &PhysicalPosition<f64>) {
-        self.clear_color.r = position.x / f64::from(self.size.width);
-        self.clear_color.b = position.y / f64::from(self.size.height);
+        self.clear_color.r = position.x / self.size.width as f64;
+        self.clear_color.b = position.y / self.size.height as f64;
     }
 
     #[inline]
@@ -310,8 +328,8 @@ impl State {
 
     fn set_cursor_to_center(&self, window: &Window) -> Result<(), Error> {
         let cursor_position = PhysicalPosition::<f64> {
-            x: f64::from(self.size.width) / 2.0,
-            y: f64::from(self.size.height) / 2.0,
+            x: self.size.width as f64 / 2.0,
+            y: self.size.height as f64 / 2.0,
         };
 
         window.set_cursor_position(cursor_position)?;

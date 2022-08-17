@@ -1,3 +1,4 @@
+pub mod camera;
 pub mod challenge;
 pub mod err;
 pub mod event_loop;
