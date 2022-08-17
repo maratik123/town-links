@@ -14,9 +14,9 @@ use std::iter;
 use wgpu::{
     util::{BufferInitDescriptor, DeviceExt},
     Backends, BindGroup, BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor,
-    BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferUsages, Color,
-    CommandEncoderDescriptor, Device, DeviceDescriptor, Features, IndexFormat, Instance, Limits,
-    LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
+    BindGroupLayoutEntry, BindingResource, BindingType, Buffer, BufferBindingType, BufferUsages,
+    Color, CommandEncoderDescriptor, Device, DeviceDescriptor, Features, IndexFormat, Instance,
+    Limits, LoadOp, Operations, PowerPreference, PresentMode, Queue, RenderPassColorAttachment,
     RenderPassDescriptor, RenderPipeline, RequestAdapterOptions, SamplerBindingType, ShaderStages,
     Surface, SurfaceConfiguration, TextureSampleType, TextureUsages, TextureViewDescriptor,
     TextureViewDimension,
@@ -45,7 +45,10 @@ pub struct State {
     diffuse_bind_group: BindGroup,
     challenge3_bind_group: BindGroup,
     _diffuse_texture: TextureState,
-    camera: Camera,
+    _camera: Camera,
+    _camera_uniform: CameraUniform,
+    _camera_buffer: Buffer,
+    camera_bind_group: BindGroup,
 }
 
 impl State {
@@ -154,15 +157,33 @@ impl State {
             label: Some("Challenge3 bind group descriptor"),
         });
 
+        let camera_bind_group_layout =
+            device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+                entries: &[BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStages::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
+                }],
+                label: Some("Camera bind group layout"),
+            });
+
+        let (render_pipeline, challenge_pipeline) = create_pipeline(
+            &device,
+            &config,
+            &[&texture_bind_group_layout, &camera_bind_group_layout],
+        );
+
         let clear_color = Color {
             r: 0.0,
             g: 0.2,
             b: 0.0,
             a: 1.0,
         };
-
-        let (render_pipeline, challenge_pipeline) =
-            create_pipeline(&device, &config, &[&texture_bind_group_layout]);
 
         let vertex_buffer = device.create_buffer_init(&BufferInitDescriptor {
             label: Some("Vertex buffer"),
@@ -186,8 +207,6 @@ impl State {
 
         let num_indices_challenge2 = INDICES_CHALLENGE2.len() as u32;
 
-        let challenge = Challenge::default();
-
         let camera = Camera {
             eye: (0.0, 1.0, 2.0).into(),
             target: (0.0, 0.0, 0.0).into(),
@@ -200,6 +219,23 @@ impl State {
 
         let mut camera_uniform = CameraUniform::default();
         camera_uniform.update_view_proj(&camera);
+
+        let camera_buffer = device.create_buffer_init(&BufferInitDescriptor {
+            label: Some("Camera buffer"),
+            contents: cast_slice(&[camera_uniform]),
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
+        });
+
+        let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
+            layout: &camera_bind_group_layout,
+            entries: &[BindGroupEntry {
+                binding: 0,
+                resource: camera_buffer.as_entire_binding(),
+            }],
+            label: Some("Camera bind group"),
+        });
+
+        let challenge = Challenge::default();
 
         let result = Self {
             surface,
@@ -219,7 +255,10 @@ impl State {
             diffuse_bind_group,
             challenge3_bind_group,
             _diffuse_texture: diffuse_texture,
-            camera,
+            _camera: camera,
+            _camera_uniform: camera_uniform,
+            _camera_buffer: camera_buffer,
+            camera_bind_group,
         };
 
         result.set_cursor_to_center(window)?;
@@ -294,6 +333,7 @@ impl State {
                         },
                         &[],
                     );
+                    render_pass.set_bind_group(1, &self.camera_bind_group, &[]);
                     render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
                     let (index_buffer, num_indices) =
                         if let Some(ChallengeEnum::Second) = self.challenge.into() {

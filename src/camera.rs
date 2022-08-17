@@ -24,7 +24,7 @@ impl Camera {
         let view = Matrix4::look_at_rh(self.eye, self.target, self.up);
         let proj = perspective(Deg(self.fovy), self.aspect, self.znear, self.zfar);
 
-        OPENGL_TO_WGPU_MATRIX * view * proj
+        OPENGL_TO_WGPU_MATRIX * proj * view
     }
 }
 

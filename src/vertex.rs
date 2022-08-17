@@ -9,6 +9,19 @@ pub struct Vertex {
     tex_coords: [f32; 2],
 }
 
+impl Vertex {
+    const ATTRIBS: [VertexAttribute; 2] = vertex_attr_array![0 => Float32x3, 1 => Float32x2];
+
+    #[inline]
+    pub const fn desc<'a>() -> VertexBufferLayout<'a> {
+        VertexBufferLayout {
+            array_stride: mem::size_of::<Self>() as BufferAddress,
+            step_mode: VertexStepMode::Vertex,
+            attributes: &Self::ATTRIBS,
+        }
+    }
+}
+
 pub const VERTICES: &[Vertex] = &[
     Vertex {
         position: [-0.0868241, 0.49240386, 0.0],
@@ -42,16 +55,3 @@ pub const VERTICES: &[Vertex] = &[
 
 pub const INDICES: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4];
 pub const INDICES_CHALLENGE2: &[u16] = &[0, 1, 4, 1, 2, 4, 2, 3, 4, 5, 0, 4, 2, 6, 3];
-
-impl Vertex {
-    const ATTRIBS: [VertexAttribute; 2] = vertex_attr_array![0 => Float32x3, 1 => Float32x2];
-
-    #[inline]
-    pub const fn desc<'a>() -> VertexBufferLayout<'a> {
-        VertexBufferLayout {
-            array_stride: mem::size_of::<Self>() as BufferAddress,
-            step_mode: VertexStepMode::Vertex,
-            attributes: &Self::ATTRIBS,
-        }
-    }
-}
