@@ -1,4 +1,5 @@
 mod camera;
+mod camera_controller;
 mod challenge;
 pub mod err;
 pub mod event_loop;

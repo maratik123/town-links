@@ -1,6 +1,6 @@
-use crate::camera::CameraUniform;
 use crate::{
-    camera::Camera,
+    camera::{Camera, CameraUniform},
+    camera_controller::CameraController,
     challenge::{Challenge, ChallengeEnum},
     err::Error,
     pipeline::create_pipeline,
@@ -45,10 +45,11 @@ pub struct State {
     diffuse_bind_group: BindGroup,
     challenge3_bind_group: BindGroup,
     _diffuse_texture: TextureState,
-    _camera: Camera,
-    _camera_uniform: CameraUniform,
-    _camera_buffer: Buffer,
+    camera: Camera,
+    camera_uniform: CameraUniform,
+    camera_buffer: Buffer,
     camera_bind_group: BindGroup,
+    camera_controller: CameraController,
 }
 
 impl State {
@@ -235,6 +236,8 @@ impl State {
             label: Some("Camera bind group"),
         });
 
+        let camera_controller = CameraController::new(0.2);
+
         let challenge = Challenge::default();
 
         let result = Self {
@@ -255,10 +258,11 @@ impl State {
             diffuse_bind_group,
             challenge3_bind_group,
             _diffuse_texture: diffuse_texture,
-            _camera: camera,
-            _camera_uniform: camera_uniform,
-            _camera_buffer: camera_buffer,
+            camera,
+            camera_uniform,
+            camera_buffer,
             camera_bind_group,
+            camera_controller,
         };
 
         result.set_cursor_to_center(window)?;
@@ -273,6 +277,8 @@ impl State {
         self.size = new_size;
         self.config.width = new_size.width;
         self.config.height = new_size.height;
+        self.camera.aspect = new_size.width as f32 / new_size.height as f32;
+        self.update_camera_uniform();
         self.surface.configure(&self.device, &self.config);
     }
 
@@ -290,11 +296,20 @@ impl State {
                 self.challenge = self.challenge.rotate();
                 true
             }
-            _ => false,
+            event => self.camera_controller.process_events(event),
         }
     }
 
-    pub fn update(&mut self) {}
+    pub fn update(&mut self) {
+        self.camera_controller.update_camera(&mut self.camera);
+        self.update_camera_uniform();
+    }
+
+    fn update_camera_uniform(&mut self) {
+        self.camera_uniform.update_view_proj(&self.camera);
+        self.queue
+            .write_buffer(&self.camera_buffer, 0, cast_slice(&[self.camera_uniform]));
+    }
 
     pub fn render(&mut self) -> Result<(), Error> {
         let output = self.surface.get_current_texture()?;
