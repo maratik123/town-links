@@ -1,8 +1,8 @@
-pub mod camera;
-pub mod challenge;
+mod camera;
+mod challenge;
 pub mod err;
 pub mod event_loop;
-pub mod pipeline;
-pub mod state;
-pub mod texture;
-pub mod vertex;
+mod pipeline;
+mod state;
+mod texture;
+mod vertex;
