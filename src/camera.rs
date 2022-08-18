@@ -1,5 +1,6 @@
+use crate::mat4x4_uniform::Mat4x4Uniform;
 use bytemuck::{Pod, Zeroable};
-use cgmath::{perspective, Deg, Matrix4, Point3, SquareMatrix, Vector3};
+use cgmath::{perspective, Deg, Matrix4, Point3, Vector3};
 
 pub struct Camera {
     pub eye: Point3<f32>,
@@ -29,23 +30,13 @@ impl Camera {
 }
 
 #[repr(C)]
-#[derive(Copy, Clone, Debug, Pod, Zeroable)]
-pub struct CameraUniform {
-    view_proj: [[f32; 4]; 4],
-}
+#[derive(Default, Copy, Clone, Debug, Pod, Zeroable)]
+pub struct CameraUniform(Mat4x4Uniform);
 
 impl CameraUniform {
     #[inline]
     pub fn update_view_proj(&mut self, camera: &Camera) {
-        self.view_proj = camera.build_view_projection_matrix().into();
-    }
-}
-
-impl Default for CameraUniform {
-    #[inline]
-    fn default() -> Self {
-        Self {
-            view_proj: Matrix4::identity().into(),
-        }
+        let Self(mat) = self;
+        mat.update_mat(camera.build_view_projection_matrix());
     }
 }

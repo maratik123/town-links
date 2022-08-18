@@ -1,3 +1,4 @@
+use crate::model::{Model, ModelUniform};
 use crate::{
     camera::{Camera, CameraUniform},
     camera_controller::CameraController,
@@ -50,6 +51,10 @@ pub struct State {
     camera_buffer: Buffer,
     camera_bind_group: BindGroup,
     camera_controller: CameraController,
+    model: Model,
+    model_uniform: ModelUniform,
+    model_buffer: Buffer,
+    model_bind_group: BindGroup,
 }
 
 impl State {
@@ -158,7 +163,7 @@ impl State {
             label: Some("Challenge3 bind group descriptor"),
         });
 
-        let camera_bind_group_layout =
+        let mat4x4_bind_group_layout =
             device.create_bind_group_layout(&BindGroupLayoutDescriptor {
                 entries: &[BindGroupLayoutEntry {
                     binding: 0,
@@ -170,13 +175,13 @@ impl State {
                     },
                     count: None,
                 }],
-                label: Some("Camera bind group layout"),
+                label: Some("Mat4x4 bind group layout"),
             });
 
-        let (render_pipeline, challenge_pipeline) = create_pipeline(
+        let (render_pipeline, challenge_pipeline, challenge4_pipeline) = create_pipeline(
             &device,
             &config,
-            &[&texture_bind_group_layout, &camera_bind_group_layout],
+            &[&texture_bind_group_layout, &mat4x4_bind_group_layout],
         );
 
         let clear_color = Color {
@@ -228,7 +233,7 @@ impl State {
         });
 
         let camera_bind_group = device.create_bind_group(&BindGroupDescriptor {
-            layout: &camera_bind_group_layout,
+            layout: &mat4x4_bind_group_layout,
             entries: &[BindGroupEntry {
                 binding: 0,
                 resource: camera_buffer.as_entire_binding(),

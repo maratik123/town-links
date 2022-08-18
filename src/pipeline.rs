@@ -10,10 +10,12 @@ pub fn create_pipeline<'a>(
     device: &Device,
     config: &SurfaceConfiguration,
     bind_group_layouts: &'a [&'a BindGroupLayout],
-) -> (RenderPipeline, RenderPipeline) {
+) -> (RenderPipeline, RenderPipeline, RenderPipeline) {
     let shader = device.create_shader_module(include_wgsl!("../resources/shader.wgsl"));
     let challenge_shader =
         device.create_shader_module(include_wgsl!("../resources/challenge.wgsl"));
+    let challenge4_shader =
+        device.create_shader_module(include_wgsl!("../resources/challenge4.wgsl"));
 
     let render_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
         label: Some("Render Pipeline Layout"),
@@ -27,6 +29,12 @@ pub fn create_pipeline<'a>(
             bind_group_layouts: &[],
             push_constant_ranges: &[],
         });
+
+    let challenge4_pipeline_layout = device.create_pipeline_layout(&PipelineLayoutDescriptor {
+        label: Some("Challenge4 Pipeline Layout"),
+        bind_group_layouts,
+        push_constant_ranges: &[],
+    });
 
     let render_pipeline = create_pipeline_int(
         device,
@@ -44,7 +52,15 @@ pub fn create_pipeline<'a>(
         &[],
     );
 
-    (render_pipeline, challenge_pipeline)
+    let challenge4_pipeline = create_pipeline_int(
+        device,
+        config,
+        &challenge4_pipeline_layout,
+        &shader,
+        &[Vertex::desc()],
+    );
+
+    (render_pipeline, challenge_pipeline, challenge4_pipeline)
 }
 
 fn create_pipeline_int<'a>(

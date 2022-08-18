@@ -3,6 +3,7 @@ pub enum ChallengeEnum {
     First,
     Second,
     Third,
+    Fourth,
 }
 
 #[derive(Copy, Clone, Default)]
@@ -16,7 +17,8 @@ impl Challenge {
             None => Some(ChallengeEnum::First),
             Some(ChallengeEnum::First) => Some(ChallengeEnum::Second),
             Some(ChallengeEnum::Second) => Some(ChallengeEnum::Third),
-            Some(ChallengeEnum::Third) => None,
+            Some(ChallengeEnum::Third) => Some(ChallengeEnum::Fourth),
+            Some(ChallengeEnum::Fourth) => None,
         }
         .into()
     }
