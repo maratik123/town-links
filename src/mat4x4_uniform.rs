@@ -4,7 +4,7 @@ use cgmath::{Matrix4, SquareMatrix};
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Pod, Zeroable)]
 pub struct Mat4x4Uniform {
-    pub mat: [[f32; 4]; 4],
+    mat: [[f32; 4]; 4],
 }
 
 impl Mat4x4Uniform {
